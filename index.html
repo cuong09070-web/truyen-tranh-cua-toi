@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truyện Tranh Của Tôi</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --header-bg: #1f1f1f;
+            --accent: #ff4757;
+        }
+        body { margin: 0; padding: 0; background: var(--bg-color); color: var(--text-color); font-family: sans-serif; }
+        
+        /* Header */
+        header {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: var(--header-bg); padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100; border-bottom: 1px solid #333;
+        }
+        h1 { margin: 0; font-size: 1.2rem; color: var(--accent); }
+        
+        .controls { display: flex; gap: 10px; }
+        select, button {
+            padding: 8px; border-radius: 4px; border: 1px solid #444;
+            background: #2c2c2c; color: white; cursor: pointer;
+        }
+        button:hover { background: #444; }
+
+        /* Reader Area */
+        #reader {
+            margin-top: 60px; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+            padding-bottom: 50px;
+        }
+        
+        img.page {
+            max-width: 100%; height: auto; display: block;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+
+        /* Webtoon Mode (Mặc định) */
+        .mode-webtoon img.page { margin-bottom: 0; width: 100%; max-width: 800px; }
+
+        /* Manga Mode (Từng trang) */
+        .mode-manga { flex-direction: row; justify-content: center; height: calc(100vh - 60px); overflow: hidden; }
+        .mode-manga img.page { display: none; max-height: 100%; object-fit: contain; }
+        .mode-manga img.page.active { display: block; }
+
+        /* Nút điều hướng cho chế độ Manga */
+        .nav-btn {
+            position: fixed; top: 50%; transform: translateY(-50%);
+            background: rgba(0,0,0,0.5); color: white; border: none;
+            padding: 20px; font-size: 24px; cursor: pointer; display: none;
+        }
+        .prev { left: 10px; }
+        .next { right: 10px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>My Comic</h1>
+    <div class="controls">
+        <select id="chapterSelect" onchange="loadChapter(this.value)"></select>
+        <button onclick="toggleMode()">Đổi Chế độ</button>
+    </div>
+</header>
+
+<div id="reader" class="mode-webtoon">
+    </div>
+
+<button class="nav-btn prev" onclick="changePage(-1)">❮</button>
+<button class="nav-btn next" onclick="changePage(1)">❯</button>
+
+<script>
+    // ==========================================
+    // KHU VỰC CẤU HÌNH TRUYỆN CỦA BẠN (SỬA Ở ĐÂY)
+    // ==========================================
+    const comicData = {
+        "chap1": {
+            title: "Chương 1: Tên chương truyện của bạn",
+            pages: [
+                "images/chap1_01.jpg",  // <-- Sửa đúng tên file ảnh bạn đã lưu
+                "images/chap1_02.jpg",
+                "images/chap1_03.jpg"   // <-- Nhớ có dấu phẩy ở cuối dòng (trừ dòng cuối cùng)
+            ]
+        },
+        // Nếu muốn thêm chương 2 thì copy đoạn trên và sửa thành chap2
+    };
+        "chap1": {
+            title: "Chương 1: Khởi đầu",
+            // Bạn có thể dùng Link ảnh trên mạng (Imgur, Facebook...) hoặc tên file ảnh trong cùng thư mục
+            pages: [
+                "https://via.placeholder.com/600x800?text=Trang+1",
+                "https://via.placeholder.com/600x800?text=Trang+2",
+                "https://via.placeholder.com/600x800?text=Trang+3"
+            ]
+        },
+        "chap2": {
+            title: "Chương 2: Diễn biến",
+            pages: [
+                "https://via.placeholder.com/600x800/ff0000/fff?text=Chap2+Trang1",
+                "https://via.placeholder.com/600x800/ff0000/fff?text=Chap2+Trang2"
+            ]
+        }
+    };
+    // ==========================================
+
+    const reader = document.getElementById('reader');
+    const select = document.getElementById('chapterSelect');
+    const navBtns = document.querySelectorAll('.nav-btn');
+    let currentMode = 'webtoon'; // 'webtoon' hoặc 'manga'
+    let currentPageIndex = 0;
+    let currentPages = [];
+
+    // 1. Khởi tạo danh sách chương
+    function init() {
+        for (let key in comicData) {
+            let option = document.createElement('option');
+            option.value = key;
+            option.text = comicData[key].title;
+            select.appendChild(option);
+        }
+        loadChapter(Object.keys(comicData)[0]); // Load chương đầu tiên
+    }
+
+    // 2. Tải ảnh của chương
+    function loadChapter(chapId) {
+        reader.innerHTML = '';
+        currentPages = comicData[chapId].pages;
+        currentPageIndex = 0;
+
+        currentPages.forEach((url, index) => {
+            let img = document.createElement('img');
+            img.src = url;
+            img.className = 'page';
+            if (index === 0) img.classList.add('active');
+            reader.appendChild(img);
+        });
+        updateNav();
+    }
+
+    // 3. Chuyển chế độ (Cuộn dọc <-> Từng trang)
+    function toggleMode() {
+        currentMode = currentMode === 'webtoon' ? 'manga' : 'webtoon';
+        reader.className = `mode-${currentMode}`;
+        updateNav();
+    }
+
+    // 4. Chuyển trang (cho chế độ Manga)
+    function changePage(step) {
+        if (currentMode !== 'manga') return;
+        
+        let imgs = document.querySelectorAll('.page');
+        let nextIndex = currentPageIndex + step;
+
+        if (nextIndex >= 0 && nextIndex < imgs.length) {
+            imgs[currentPageIndex].classList.remove('active');
+            currentPageIndex = nextIndex;
+            imgs[currentPageIndex].classList.add('active');
+        }
+    }
+
+    function updateNav() {
+        // Hiện nút bấm nếu ở chế độ Manga
+        navBtns.forEach(btn => btn.style.display = currentMode === 'manga' ? 'block' : 'none');
+        
+        // Reset scroll khi đổi chương
+        if(currentMode === 'webtoon') window.scrollTo(0,0);
+    }
+
+    // Phím tắt
+    document.addEventListener('keydown', (e) => {
+        if (currentMode === 'manga') {
+            if (e.key === 'ArrowLeft') changePage(-1);
+            if (e.key === 'ArrowRight') changePage(1);
+        }
+    });
+
+    init(); // Chạy ứng dụng
+</script>
+
+</body>
+</html>
